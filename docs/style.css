@@ -110,12 +110,12 @@ main {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
-.features, .usage {
+.features, .usage, .installation, .cicd {
     padding: 4rem 1rem;
     text-align: center;
 }
 
-.features h2, .usage h2 {
+.features h2, .usage h2, .installation h2, .cicd h2 {
     font-size: 2.5rem;
     margin-bottom: 3rem;
 }
@@ -153,7 +153,7 @@ main {
     margin-bottom: 0.5rem;
 }
 
-.usage-content {
+.usage-content, .installation-content, .cicd-content {
     max-width: 800px;
     margin: 0 auto;
     text-align: left;
@@ -162,6 +162,17 @@ main {
     border-radius: 10px;
     box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
     border: 1px solid #444;
+}
+
+.code-block {
+    margin-bottom: 2rem;
+}
+
+.code-block h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    margin-top: 1.5rem;
+    text-align: left;
 }
 
 pre {
@@ -173,6 +184,7 @@ pre {
     white-space: pre-wrap;
     word-wrap: break-word;
     border: 1px solid #555;
+    text-align: left;
 }
 
 footer {
@@ -192,4 +204,14 @@ footer {
 
 .social-links a:hover {
     color: var(--white);
+}
+
+@media (max-width: 768px) {
+    .nav-links {
+        display: none;
+    }
+
+    .hero-content h1 {
+        font-size: 2.5rem;
+    }
 }

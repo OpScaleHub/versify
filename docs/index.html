@@ -15,7 +15,9 @@
             </div>
             <ul class="nav-links">
                 <li><a href="#features">Features</a></li>
+                <li><a href="#installation">Installation</a></li>
                 <li><a href="#usage">Usage</a></li>
+                <li><a href="#cicd">CI/CD</a></li>
                 <li><a href="https://github.com/OpScaleHub/versify" target="_blank">GitHub</a></li>
             </ul>
         </nav>
@@ -26,7 +28,7 @@
             <div class="hero-content">
                 <h1>Automate Your Versioning Workflow</h1>
                 <p>Versify is a simple, yet powerful tool for Go projects that automates semantic versioning based on your commit messages. Spend less time tagging and more time coding.</p>
-                <a href="https://github.com/OpScaleHub/versify" class="cta-button" target="_blank">Get Started</a>
+                <a href="https://github.com/OpScaleHub/versify/releases/latest" class="cta-button" target="_blank">Get Started</a>
             </div>
         </section>
 
@@ -51,12 +53,93 @@
             </div>
         </section>
 
+        <section id="installation" class="installation">
+            <h2>Installation</h2>
+            <p>Download the pre-compiled binary for your OS from the <a href="https://github.com/OpScaleHub/versify/releases/latest" target="_blank">latest release page</a> or use the commands below.</p>
+
+            <div class="code-block">
+                <h3>Linux & macOS</h3>
+                <pre><code># Download the latest binary for your architecture
+curl -L "https://github.com/OpScaleHub/versify/releases/latest/download/versify-linux-amd64" -o versify
+chmod +x versify
+sudo mv versify /usr/local/bin/</code></pre>
+            </div>
+
+            <div class="code-block">
+                <h3>Windows (PowerShell)</h3>
+                <pre><code># Download the latest binary
+Invoke-WebRequest -Uri "https://github.com/OpScaleHub/versify/releases/latest/download/versify-windows-amd64.exe" -OutFile "versify.exe"
+# Move it to a directory in your PATH (optional)
+Move-Item -Path ".\versify.exe" -Destination "C:\Windows\System32"</code></pre>
+            </div>
+        </section>
+
         <section id="usage" class="usage">
             <h2>Usage</h2>
             <div class="usage-content">
-                <p>Using Versify is as simple as running a single command in your Go project's repository.</p>
-                <pre><code>go run main.go</code></pre>
-                <p>The tool will then analyze your commits and suggest the next version number.</p>
+                <p>Once installed, navigate to your Git repository and run the command:</p>
+                <pre><code>versify</code></pre>
+                <p>The tool will analyze your commit history and output the suggested next semantic version.</p>
+                <div class="code-block">
+                    <h3>Example Output</h3>
+                    <pre><code>--- SemVer Version Bumper (Conventional Commits) ---
+Last released version: v0.1.2
+Analyzing commits since v0.1.2...
+
+Determined BUMP: MINOR (Found 'feat:' commit)
+Next suggested version: v0.2.0</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <section id="cicd" class="cicd">
+            <h2>CI/CD Integration</h2>
+            <p>Automate your release process by using Versify in your pipeline. Here’s an example for GitHub Actions.</p>
+            <div class="code-block">
+                <h3>GitHub Actions Example</h3>
+                <pre><code>name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and Install Versify
+        run: |
+          curl -L "https://github.com/OpScaleHub/versify/releases/latest/download/versify-linux-amd64" -o versify
+          chmod +x versify
+          sudo mv versify /usr/local/bin/
+
+      - name: Get Next Version
+        id: get_version
+        run: |
+          VERSION=$(versify | grep 'Next suggested version:' | awk '{print $4}')
+          if [[ -z "$VERSION" || "$VERSION" == *"No-Change"* ]]; then
+            echo "No version change detected."
+            echo "version=" >> $GITHUB_OUTPUT
+          else
+            echo "New version found: $VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Git Tag and GitHub Release
+        if: steps.get_version.outputs.version
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.version }}
+          name: Release ${{ steps.get_version.outputs.version }}
+          body: "See CHANGELOG for details."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}</code></pre>
             </div>
         </section>
     </main>
