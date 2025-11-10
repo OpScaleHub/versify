@@ -28,9 +28,10 @@ func getCurrentVersion() (int, int, int, error) {
 	tag, err := cmd.Output()
 
 	if err != nil {
-		// If no tags exist, start at v0.0.0
-		if strings.Contains(err.Error(), "No tags found") {
-			fmt.Println("No SemVer tags found. Starting from v0.0.0.")
+		// If no tags exist or no commits, start at v0.0.0
+		errorOutput := err.Error()
+		if strings.Contains(errorOutput, "No tags found") || strings.Contains(errorOutput, "No names found") {
+			fmt.Println("No SemVer tags found or no commits. Starting from v0.0.0.")
 			return 0, 0, 0, nil
 		}
 		return 0, 0, 0, fmt.Errorf("error getting latest tag: %w", err)
