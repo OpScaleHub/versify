@@ -42,6 +42,10 @@ jobs:
       with:
         go-version: '1.21' # Updated to a stable, recent Go version
 
+    # ADDED STEP: Ensures go.mod and go.sum are synchronized
+    - name: Download Go Modules and Tidy
+      run: go mod tidy
+
     # Run tests before building anything
     - name: Test
       run: go test -v ./...
