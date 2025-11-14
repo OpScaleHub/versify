@@ -77,17 +77,54 @@ Move-Item -Path ".\versify.exe" -Destination "C:\Windows\System32"</code></pre>
         <section id="usage" class="usage">
             <h2>Usage</h2>
             <div class="usage-content">
-                <p>Once installed, navigate to your Git repository and run the command:</p>
-                <pre><code>versify</code></pre>
-                <p>The tool will analyze your commit history and output the suggested next semantic version.</p>
+                <p>Once installed, navigate to your Git repository and run the command with the desired flags. The tool outputs the final version to <strong>stdout</strong> and logs its progress to <strong>stderr</strong>.</p>
+                <pre><code>versify [flags]</code></pre>
+                
+                <h3>Command-Line Flags</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Flag</th>
+                                <th>Description</th>
+                                <th>Default</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>--prefix</code></td>
+                                <td>The prefix for the version tag (e.g., `v`, `k8s`).</td>
+                                <td>`v`</td>
+                            </tr>
+                            <tr>
+                                <td><code>--baseline</code></td>
+                                <td>A specific version to use as the starting point, instead of the latest Git tag.</td>
+                                <td>(empty)</td>
+                            </tr>
+                            <tr>
+                                <td><code>--add-suffix</code></td>
+                                <td>Always add a suffix to the new version (e.g., for pre-releases or build metadata).</td>
+                                <td>`false`</td>
+                            </tr>
+                            <tr>
+                                <td><code>--suffix-format</code></td>
+                                <td>The format for the suffix when <code>--add-suffix</code> is used. Options: `short-hash`, `datetime`.</td>
+                                <td>`short-hash`</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
                 <div class="code-block">
-                    <h3>Example Output</h3>
-                    <pre><code>--- SemVer Version Bumper (Conventional Commits) ---
+                    <h3>Example (stderr)</h3>
+                    <pre><code>$ versify
+--- SemVer Version Bumper (Conventional Commits) ---
 Last released version: v0.1.2
 Analyzing commits since v0.1.2...
 
-Determined BUMP: MINOR (Found 'feat:' commit)
-Next suggested version: v0.2.0</code></pre>
+Determined BUMP: MINOR (Found 'feat:' commit)</code></pre>
+                    <h3>Example (stdout)</h3>
+                    <pre><code>v0.2.0</code></pre>
                 </div>
             </div>
         </section>
@@ -122,8 +159,11 @@ jobs:
       - name: Get Next Version
         id: get_version
         run: |
-          VERSION=$(versify | grep 'Next suggested version:' | awk '{print $4}')
-          if [[ -z "$VERSION" || "$VERSION" == *"No-Change"* ]]; then
+          # Run versify and capture the new version from stdout
+          VERSION=$(versify)
+          
+          # Check if a new version was determined
+          if [[ -z "$VERSION" ]]; then
             echo "No version change detected."
             echo "version=" >> $GITHUB_OUTPUT
           else

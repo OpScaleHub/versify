@@ -1,11 +1,14 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
+	"time"
 )
 
 // Conventional Commit regex to extract type and look for BREAKING CHANGE
@@ -21,26 +24,30 @@ const (
 	BumpMajor
 )
 
-// getCurrentVersion reads the latest Git tag (vX.Y.Z) and returns the version components.
-func getCurrentVersion() (int, int, int, error) {
-	// Find the latest annotated or lightweight tag matching vX.Y.Z
-	cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", "v[0-9]*.[0-9]*.[0-9]*")
-	tag, err := cmd.Output()
+// getCurrentVersion reads the latest Git tag (e.g., vX.Y.Z) or uses a baseline, and returns the version components.
+func getCurrentVersion(prefix, baseline string) (int, int, int, error) {
+	var versionStr string
+	if baseline != "" {
+		fmt.Fprintf(os.Stderr, "Using baseline version: %s\n", baseline)
+		versionStr = strings.TrimPrefix(baseline, prefix)
+	} else {
+		// Find the latest annotated or lightweight tag matching <prefix>X.Y.Z
+		matchPattern := fmt.Sprintf("%s[0-9]*.[0-9]*.[0-9]*", prefix)
+		cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", matchPattern)
+		tag, err := cmd.Output()
 
-	if err != nil {
-		// If no tags exist or no commits, start at v0.0.0
-		errorOutput := err.Error()
-		if strings.Contains(errorOutput, "No tags found") || strings.Contains(errorOutput, "No names found") {
-			fmt.Println("No SemVer tags found or no commits. Starting from v0.0.0.")
-			return 0, 0, 0, nil
+		if err != nil {
+			errorOutput := err.Error()
+			if strings.Contains(errorOutput, "No tags found") || strings.Contains(errorOutput, "No names found") {
+				fmt.Fprintf(os.Stderr, "No SemVer tags with prefix '%s' found. Starting from %s0.0.0.\n", prefix, prefix)
+				return 0, 0, 0, nil
+			}
+			return 0, 0, 0, fmt.Errorf("error getting latest tag: %w", err)
 		}
-		return 0, 0, 0, fmt.Errorf("error getting latest tag: %w", err)
+		versionStr = strings.TrimPrefix(strings.TrimSpace(string(tag)), prefix)
 	}
 
-	// Clean and parse the tag (e.g., "v1.2.3\n" -> "1.2.3")
-	versionStr := strings.TrimPrefix(strings.TrimSpace(string(tag)), "v")
 	parts := strings.Split(versionStr, ".")
-
 	if len(parts) != 3 {
 		return 0, 0, 0, fmt.Errorf("invalid SemVer tag format: %s", versionStr)
 	}
@@ -49,26 +56,24 @@ func getCurrentVersion() (int, int, int, error) {
 	minor, _ := strconv.Atoi(parts[1])
 	patch, _ := strconv.Atoi(parts[2])
 
-	fmt.Printf("Last released version: v%d.%d.%d\n", major, minor, patch)
+	fmt.Fprintf(os.Stderr, "Last released version: %s%d.%d.%d\n", prefix, major, minor, patch)
 	return major, minor, patch, nil
 }
 
-// getCommitsSinceLastTag fetches all commit messages since the last Git tag.
-func getCommitsSinceLastTag() ([]string, error) {
-	// Get the last tag again to determine the commit range
-	cmdTag := exec.Command("git", "describe", "--tags", "--abbrev=0")
+// getCommitsSinceLastTag fetches all commit messages since the last Git tag matching the prefix.
+func getCommitsSinceLastTag(prefix string) ([]string, error) {
+	matchPattern := fmt.Sprintf("%s[0-9]*.[0-9]*.[0-9]*", prefix)
+	cmdTag := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", matchPattern)
 	lastTag, err := cmdTag.Output()
 
 	var cmd *exec.Cmd
 	if err != nil || len(lastTag) == 0 {
-		// If no tags, get all commits from the beginning
 		cmd = exec.Command("git", "log", "--pretty=format:%s%n%b")
-		fmt.Println("Analyzing all commits (no previous tag found).")
+		fmt.Fprintln(os.Stderr, "Analyzing all commits (no previous tag found).")
 	} else {
-		// Get commits since the last tag, including subject and body
 		tag := strings.TrimSpace(string(lastTag))
 		cmd = exec.Command("git", "log", fmt.Sprintf("%s..HEAD", tag), "--pretty=format:%s%n%b")
-		fmt.Printf("Analyzing commits since %s...\n", tag)
+		fmt.Fprintf(os.Stderr, "Analyzing commits since %s...\n", tag)
 	}
 
 	output, err := cmd.Output()
@@ -76,7 +81,6 @@ func getCommitsSinceLastTag() ([]string, error) {
 		return nil, fmt.Errorf("error running git log: %w", err)
 	}
 
-	// Split the output into individual commit messages (subject + body)
 	commits := strings.Split(strings.TrimSpace(string(output)), "\n\n")
 	return commits, nil
 }
@@ -86,12 +90,10 @@ func analyzeCommits(commits []string) SemVerBump {
 	requiredBump := BumpNone
 
 	for _, commit := range commits {
-		// Check for explicit 'BREAKING CHANGE' in the commit body (case-insensitive)
 		if strings.Contains(strings.ToUpper(commit), "BREAKING CHANGE") {
-			return BumpMajor // Major is the highest possible bump, so we can return early
+			return BumpMajor
 		}
 
-		// Check the commit header for '!' (breaking change syntax) and type
 		match := commitRegex.FindStringSubmatch(commit)
 		if len(match) > 0 {
 			commitType := match[1]
@@ -110,7 +112,6 @@ func analyzeCommits(commits []string) SemVerBump {
 					requiredBump = BumpPatch
 				}
 			}
-			// Other types (chore, docs, test, etc.) default to BumpNone unless configured otherwise
 		}
 	}
 
@@ -118,27 +119,33 @@ func analyzeCommits(commits []string) SemVerBump {
 }
 
 func main() {
-	fmt.Println("--- SemVer Version Bumper (Conventional Commits) ---")
+	prefix := flag.String("prefix", "v", "The prefix for the version tag (e.g., 'v', 'k8s')")
+	baseline := flag.String("baseline", "", "The baseline version to use instead of the latest tag (e.g., '1.2.3')")
+	addSuffix := flag.Bool("add-suffix", false, "Always add a suffix to the version (e.g., for pre-releases or builds)")
+	suffixFormat := flag.String("suffix-format", "short-hash", "The format for the suffix (e.g., 'short-hash', 'datetime')")
+	flag.Parse()
 
-	currentMajor, currentMinor, currentPatch, err := getCurrentVersion()
+	fmt.Fprintln(os.Stderr, "--- SemVer Version Bumper (Conventional Commits) ---")
+
+	currentMajor, currentMinor, currentPatch, err := getCurrentVersion(*prefix, *baseline)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
 	}
 
-	commits, err := getCommitsSinceLastTag()
+	commits, err := getCommitsSinceLastTag(*prefix)
 	if err != nil {
-		fmt.Printf("Error: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		return
 	}
-    
-    // If no new commits, just return the current version
+
 	if len(commits) == 0 || (len(commits) == 1 && commits[0] == "") {
-        fmt.Println("\nNo new conventional commits since last tag.")
-        fmt.Printf("Next suggested version: v%d.%d.%d (No Change)\n", currentMajor, currentMinor, currentPatch)
-        return
-    }
-    
+		fmt.Fprintln(os.Stderr, "\nNo new conventional commits since last tag.")
+		versionString := fmt.Sprintf("%s%d.%d.%d", *prefix, currentMajor, currentMinor, currentPatch)
+		fmt.Println(versionString)
+		return
+	}
+
 	bump := analyzeCommits(commits)
 
 	newMajor, newMinor, newPatch := currentMajor, currentMinor, currentPatch
@@ -148,27 +155,45 @@ func main() {
 		newMajor++
 		newMinor = 0
 		newPatch = 0
-		fmt.Println("\nDetermined BUMP: MAJOR (Found BREAKING CHANGE or feat!/fix! commit)")
+		fmt.Fprintln(os.Stderr, "\nDetermined BUMP: MAJOR (Found BREAKING CHANGE or feat!/fix! commit)")
 	case BumpMinor:
 		newMinor++
 		newPatch = 0
-		fmt.Println("\nDetermined BUMP: MINOR (Found 'feat:' commit)")
+		fmt.Fprintln(os.Stderr, "\nDetermined BUMP: MINOR (Found 'feat:' commit)")
 	case BumpPatch:
 		newPatch++
-		fmt.Println("\nDetermined BUMP: PATCH (Found 'fix:' commit)")
+		fmt.Fprintln(os.Stderr, "\nDetermined BUMP: PATCH (Found 'fix:' commit)")
 	case BumpNone:
-		fmt.Println("\nDetermined BUMP: NONE (Only 'chore:', 'docs:', etc. commits found)")
+		fmt.Fprintln(os.Stderr, "\nDetermined BUMP: NONE (Only 'chore:', 'docs:', etc. commits found)")
 	}
 
-	// Note: We avoid bumping 0.Y.Z to 1.0.0 automatically here for simplicity,
-	// but production tools handle this based on first MAJOR release rule.
-	
-	if bump == BumpNone {
-		fmt.Printf("Next suggested version: v%d.%d.%d (No Change)\n", newMajor, newMinor, newPatch)
-	} else {
-		fmt.Printf("Next suggested version: v%d.%d.%d\n", newMajor, newMinor, newPatch)
+	versionString := fmt.Sprintf("%s%d.%d.%d", *prefix, newMajor, newMinor, newPatch)
+
+	if *addSuffix {
+		var suffix string
+		if *suffixFormat == "datetime" {
+			suffix = time.Now().UTC().Format("20060102150405")
+		} else { // default to short-hash
+			cmd := exec.Command("git", "rev-parse", "--short", "HEAD")
+			shortHash, err := cmd.Output()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting short commit hash: %v\n", err)
+			} else {
+				suffix = strings.TrimSpace(string(shortHash))
+			}
+		}
+		if suffix != "" {
+			versionString = fmt.Sprintf("%s-%s", versionString, suffix)
+		}
+		fmt.Fprintln(os.Stderr, "Suffix added.")
 	}
+
+	if bump == BumpNone && !*addSuffix {
+		fmt.Fprintln(os.Stderr, "No change detected.")
+	}
+
+	fmt.Println(versionString)
 }
 
-// Note: This Go program relies on the 'git' command-line tool being installed and 
+// Note: This Go program relies on the 'git' command-line tool being installed and
 // the code being run inside a Git repository.

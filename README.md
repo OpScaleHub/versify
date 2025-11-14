@@ -57,22 +57,47 @@ Invoke-WebRequest -Uri $url -OutFile $output
 
 ## Usage
 
-Once installed, navigate to your Git repository and run the command:
+Once installed, navigate to your Git repository and run the command with the desired flags:
 
 ```bash
-versify
+versify [flags]
 ```
 
-The tool will analyze your commit history since the last tag and output the suggested next semantic version.
+The tool analyzes your commit history since the last tag and outputs the suggested next semantic version to **stdout**, while logging its progress to **stderr**.
 
-**Example Output:**
+### Command-Line Flags
+
+| Flag              | Description                                                                                     | Default      |
+| ----------------- | ----------------------------------------------------------------------------------------------- | ------------ |
+| `--prefix`        | The prefix for the version tag (e.g., `v`, `k8s`).                                              | `v`          |
+| `--baseline`      | A specific version to use as the starting point, instead of the latest Git tag.                 | `(empty)`    |
+| `--add-suffix`    | Always add a suffix to the new version (e.g., for pre-releases or build metadata).              | `false`      |
+| `--suffix-format` | The format for the suffix when `--add-suffix` is used. Options: `short-hash`, `datetime`.       | `short-hash` |
+
+### Example
+
+```bash
+# Get the next version with a 'v' prefix
+versify
+# v0.2.0
+
+# Get the next version with a custom prefix and a datetime suffix
+versify --prefix "k8s-" --add-suffix --suffix-format datetime
+# k8s-0.2.0-20251114103000
+```
+
+**Example Output (stderr):**
 ```
 --- SemVer Version Bumper (Conventional Commits) ---
 Last released version: v0.1.2
 Analyzing commits since v0.1.2...
 
 Determined BUMP: MINOR (Found 'feat:' commit)
-Next suggested version: v0.2.0
+```
+
+The final version is printed to **stdout**:
+```
+v0.2.0
 ```
 
 ### How it Works
@@ -117,17 +142,16 @@ jobs:
       - name: Get Next Version
         id: get_version
         run: |
-          # Run versify and extract the version number from the output
-          # The output format is "Next suggested version: vX.Y.Z"
-          VERSION=$(versify | grep 'Next suggested version:' | awk '{print $4}')
+          # Run versify and capture the new version from stdout
+          VERSION=$(versify)
           
           # Check if a new version was determined
-          if [[ -z "$VERSION" || "$VERSION" == *"No-Change"* ]]; then
+          if [[ -z "$VERSION" ]]; then
             echo "No version change detected."
-            echo "::set-output name=version::"
+            echo "version=" >> $GITHUB_OUTPUT
           else
             echo "New version found: $VERSION"
-            echo "::set-output name=version::$VERSION"
+            echo "version=$VERSION" >> $GITHUB_OUTPUT
           fi
 
       - name: Create Git Tag and GitHub Release
