@@ -57,20 +57,35 @@
             <h2>Installation</h2>
             <p>Download the pre-compiled binary for your OS from the <a href="https://github.com/OpScaleHub/versify/releases/latest" target="_blank">latest release page</a> or use the commands below.</p>
 
-            <div class="code-block">
-                <h3>Linux & macOS</h3>
-                <pre><code># Download the latest binary for your architecture
-curl -L "https://github.com/OpScaleHub/versify/releases/latest/download/versify-linux-amd64" -o versify
-chmod +x versify
-sudo mv versify /usr/local/bin/</code></pre>
+            <div class="tabs">
+                <button class="tab-link active" data-os="linux">Linux</button>
+                <button class="tab-link" data-os="macos">macOS</button>
+                <button class="tab-link" data-os="windows">Windows</button>
             </div>
 
-            <div class="code-block">
-                <h3>Windows (PowerShell)</h3>
-                <pre><code># Download the latest binary
-Invoke-WebRequest -Uri "https://github.com/OpScaleHub/versify/releases/latest/download/versify-windows-amd64.exe" -OutFile "versify.exe"
-# Move it to a directory in your PATH (optional)
-Move-Item -Path ".\versify.exe" -Destination "C:\Windows\System32"</code></pre>
+            <div id="linux-instructions" class="tab-content active">
+                <div class="code-block">
+                    <h3>Linux (amd64)</h3>
+                    <pre><code id="linux-amd64-code"></code></pre>
+                </div>
+                <div class="code-block">
+                    <h3>Linux (arm64)</h3>
+                    <pre><code id="linux-arm64-code"></code></pre>
+                </div>
+            </div>
+
+            <div id="macos-instructions" class="tab-content">
+                <div class="code-block">
+                    <h3>macOS (amd64)</h3>
+                    <pre><code id="macos-amd64-code"></code></pre>
+                </div>
+            </div>
+
+            <div id="windows-instructions" class="tab-content">
+                <div class="code-block">
+                    <h3>Windows (amd64, PowerShell)</h3>
+                    <pre><code id="windows-amd64-code"></code></pre>
+                </div>
             </div>
         </section>
 

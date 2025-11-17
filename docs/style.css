@@ -215,3 +215,65 @@ footer {
         font-size: 2.5rem;
     }
 }
+/* Tabs for installation section */
+.tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+    border-bottom: 1px solid #444;
+}
+
+.tab-link {
+    padding: 1rem 2rem;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: var(--muted-text-color);
+    font-size: 1.1rem;
+    transition: color 0.3s ease, border-bottom 0.3s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.tab-link:hover {
+    color: var(--white);
+}
+
+.tab-link.active {
+    color: var(--secondary-color);
+    border-bottom: 3px solid var(--secondary-color);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.table-container {
+    overflow-x: auto;
+    margin: 2rem 0;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-color);
+}
+
+th, td {
+    padding: 1rem;
+    border: 1px solid #444;
+    text-align: left;
+}
+
+th {
+    background: #333;
+}
+
+td code {
+    background: #1e1e1e;
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+}
