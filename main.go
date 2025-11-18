@@ -12,7 +12,7 @@ import (
 )
 
 // Conventional Commit regex to extract type and look for BREAKING CHANGE
-var commitRegex = regexp.MustCompile(`^(feat|fix|chore|docs|style|refactor|perf|test|build|ci)(\([\w\-]+\))?(!?): (.+)`)
+var commitRegex = regexp.MustCompile(`^\W*(feat|fix|chore|docs|style|refactor|perf|test|build|ci)(\([\w\-]+\))?(!?): (.+)`)
 
 // SemVerBump represents the highest version bump found in commits.
 type SemVerBump int
