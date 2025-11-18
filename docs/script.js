@@ -34,6 +34,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // CI/CD tabs
+    const cicdTabLinks = document.querySelectorAll('.tab-link-cicd');
+    const cicdTabContents = document.querySelectorAll('.tab-content-cicd');
+
+    cicdTabLinks.forEach(link => {
+        link.addEventListener('click', () => {
+            const cicd = link.dataset.cicd;
+
+            cicdTabLinks.forEach(l => l.classList.remove('active'));
+            link.classList.add('active');
+
+            cicdTabContents.forEach(c => c.classList.remove('active'));
+            document.getElementById(`${cicd}-instructions`).classList.add('active');
+        });
+    });
+
     // OS detection for default tab
     const platform = navigator.platform.toLowerCase();
     let defaultOS = 'linux';

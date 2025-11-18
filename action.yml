@@ -1,0 +1,35 @@
+name: 'Versify'
+description: 'A GitHub Action to automatically determine the next semantic version based on Conventional Commits.'
+author: 'OpScaleHub'
+
+inputs:
+  prefix:
+    description: 'The prefix for the version tag (e.g., v, k8s).'
+    required: false
+    default: 'v'
+  baseline:
+    description: 'A specific version to use as the starting point, instead of the latest Git tag.'
+    required: false
+    default: ''
+  add-suffix:
+    description: 'Always add a suffix to the new version (e.g., for pre-releases or build metadata).'
+    required: false
+    default: 'false'
+  suffix-format:
+    description: 'The format for the suffix when --add-suffix is used. Options: short-hash, datetime.'
+    required: false
+    default: 'short-hash'
+  github-token:
+    description: 'GitHub token to access repository information.'
+    required: false
+    default: ${{ github.token }}
+
+outputs:
+  new_version:
+    description: 'The calculated new version string.'
+  should_bump:
+    description: 'A boolean indicating if a version bump occurred.'
+
+runs:
+  using: 'docker'
+  image: 'Dockerfile'

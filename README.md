@@ -111,9 +111,56 @@ v0.2.0
 
 Automate your release process by using Versify in your pipeline.
 
-### GitHub Actions Example
+### Usage as a GitHub Action
 
-This workflow runs on every push to the `main` branch. It calculates the next version and, if a version bump is needed, creates a new Git tag and a GitHub Release.
+The easiest way to use Versify is as a GitHub Action. This action will automatically determine the next semantic version and output it.
+
+**Example Workflow:**
+
+This workflow runs on every push to the `main` branch. It uses the Versify action to calculate the next version and, if a version bump is needed, creates a new Git tag and a GitHub Release.
+
+```yaml
+name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # Fetch all history for accurate version analysis
+          fetch-depth: 0
+
+      - name: Get Next Version
+        id: get_version
+        uses: OpScaleHub/versify@v1 # Or use './' to run from a local clone
+
+      - name: Create Git Tag and GitHub Release
+        if: steps.get_version.outputs.should_bump == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.new_version }}
+          name: Release ${{ steps.get_version.outputs.new_version }}
+          body: "See CHANGELOG for details."
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+```
+
+### Manual CI/CD Integration
+
+If you prefer not to use the GitHub Action or are using a different CI/CD platform, you can download and run the `versify` binary directly.
+
+**GitHub Actions Example (Manual Setup):**
+
+This workflow shows how to manually download and run `versify`.
 
 ```yaml
 name: Create Release
