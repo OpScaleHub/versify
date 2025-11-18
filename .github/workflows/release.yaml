@@ -17,7 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 20 # Required to analyze all commits
+          # Fetch the full history so versify can find previous tags and all commits
+          fetch-depth: 0
+          # Ensure tags are fetched for tag lookups
+          fetch-tags: true
 
       - name: Set up Go
         uses: actions/setup-go@v4
@@ -65,6 +68,10 @@ jobs:
             goarch: amd64
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full clone so the matrix jobs have access to tags/history if needed
+          fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up Go ${{ matrix.goos }} / ${{ matrix.goarch }}
         uses: actions/setup-go@v4
