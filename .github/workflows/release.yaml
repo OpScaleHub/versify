@@ -43,11 +43,12 @@ jobs:
           # Check if the tag already exists
           if git rev-parse "$PROPOSED_VERSION" >/dev/null 2>&1; then
             echo "Tag $PROPOSED_VERSION already exists. No new release needed."
-            echo "::set-output name=should_release::false"
+            # Use the new workflow output file instead of deprecated set-output
+            echo "should_release=false" >> $GITHUB_OUTPUT
           else
             echo "New version $PROPOSED_VERSION will be released."
-            echo "::set-output name=should_release::true"
-            echo "::set-output name=new_version::$PROPOSED_VERSION"
+            echo "should_release=true" >> $GITHUB_OUTPUT
+            echo "new_version=$PROPOSED_VERSION" >> $GITHUB_OUTPUT
           fi
 
   build_and_test:
