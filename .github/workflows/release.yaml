@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # Required to analyze all commits
+          fetch-depth: 20 # Required to analyze all commits
 
       - name: Set up Go
         uses: actions/setup-go@v4
