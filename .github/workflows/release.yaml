@@ -30,6 +30,18 @@ jobs:
       - name: Build versify
         run: go build -o versify .
 
+      - name: Show commits since last tag
+        run: |
+          LAST_TAG=$(git describe --tags --abbrev=0 --match "v[0-9]*.[0-9]*.[0-9]*" || echo "")
+          if [ -z "$LAST_TAG" ]; then
+            echo "No tags found, showing all commits."
+            git log --oneline
+          else
+            echo "Last tag: $LAST_TAG"
+            echo "Commits since last tag:"
+            git log $LAST_TAG..HEAD --oneline
+          fi
+
       - name: Run versify to determine next version
         id: versify
         run: |
