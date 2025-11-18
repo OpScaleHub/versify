@@ -82,21 +82,50 @@ func getLatestTagOnBranch(prefix string) (string, error) {
 func getCommitsSinceLastTag(prefix string) ([]string, error) {
 	lastTag, err := getLatestTagOnBranch(prefix)
 
-	var cmd *exec.Cmd
 	if err != nil || lastTag == "" {
-		cmd = exec.Command("git", "log", "--pretty=format:%s%n%b")
 		fmt.Fprintln(os.Stderr, "Analyzing all commits (no previous tag found).")
 	} else {
-		cmd = exec.Command("git", "log", fmt.Sprintf("%s..HEAD", lastTag), "--pretty=format:%s%n%b")
 		fmt.Fprintf(os.Stderr, "Analyzing commits since %s...\n", lastTag)
 	}
 
-	output, err := cmd.Output()
+	// Use an ASCII record separator to reliably separate commits even when
+	// commit bodies contain blank lines. We format each record as: \x1e<subject>\x1e<body>
+	// The output will look like: "\x1esubject1\x1ebody1\x1esubject2\x1ebody2..."
+	// We then split on '\x1e' and reconstruct commits from pairs of fields.
+	var formatCmd *exec.Cmd
+	if err != nil || lastTag == "" {
+		formatCmd = exec.Command("git", "log", "--pretty=format:%x1e%s%x1e%b")
+	} else {
+		formatCmd = exec.Command("git", "log", fmt.Sprintf("%s..HEAD", lastTag), "--pretty=format:%x1e%s%x1e%b")
+	}
+
+	output, err := formatCmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("error running git log: %w", err)
 	}
 
-	commits := strings.Split(strings.TrimSpace(string(output)), "\n\n")
+	raw := string(output)
+	if raw == "" {
+		return []string{}, nil
+	}
+
+	parts := strings.Split(raw, "\x1e")
+	var commits []string
+	// parts will typically start with an empty string due to leading separator.
+	// The sequence after that is: subject, body, subject, body, ...
+	for i := 1; i < len(parts); i += 2 {
+		subject := strings.TrimSpace(parts[i])
+		body := ""
+		if i+1 < len(parts) {
+			body = strings.TrimSpace(parts[i+1])
+		}
+		commit := subject
+		if body != "" {
+			commit = subject + "\n\n" + body
+		}
+		commits = append(commits, commit)
+	}
+
 	return commits, nil
 }
 
