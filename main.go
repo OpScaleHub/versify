@@ -31,11 +31,8 @@ func getCurrentVersion(prefix, baseline string) (int, int, int, error) {
 		fmt.Fprintf(os.Stderr, "Using baseline version: %s\n", baseline)
 		versionStr = strings.TrimPrefix(baseline, prefix)
 	} else {
-		// Find the latest annotated or lightweight tag matching <prefix>X.Y.Z
-		matchPattern := fmt.Sprintf("%s[0-9]*.[0-9]*.[0-9]*", prefix)
-		cmd := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", matchPattern)
-		tag, err := cmd.Output()
-
+		// Find the latest tag on the current branch
+		tag, err := getLatestTagOnBranch(prefix)
 		if err != nil {
 			errorOutput := err.Error()
 			if strings.Contains(errorOutput, "No tags found") || strings.Contains(errorOutput, "No names found") {
@@ -44,7 +41,7 @@ func getCurrentVersion(prefix, baseline string) (int, int, int, error) {
 			}
 			return 0, 0, 0, fmt.Errorf("error getting latest tag: %w", err)
 		}
-		versionStr = strings.TrimPrefix(strings.TrimSpace(string(tag)), prefix)
+		versionStr = strings.TrimPrefix(tag, prefix)
 	}
 
 	parts := strings.Split(versionStr, ".")
@@ -60,20 +57,38 @@ func getCurrentVersion(prefix, baseline string) (int, int, int, error) {
 	return major, minor, patch, nil
 }
 
+// getLatestTagOnBranch finds the latest tag on the current branch matching a prefix.
+func getLatestTagOnBranch(prefix string) (string, error) {
+	// Get the current branch name
+	cmdBranch := exec.Command("git", "rev-parse", "--abbrev-ref", "HEAD")
+	branchName, err := cmdBranch.Output()
+	if err != nil {
+		return "", fmt.Errorf("error getting current branch name: %w", err)
+	}
+	branch := strings.TrimSpace(string(branchName))
+
+	// Find the latest tag on the current branch
+	matchPattern := fmt.Sprintf("%s[0-9]*.[0-9]*.[0-9]*", prefix)
+	cmdTag := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", matchPattern, branch)
+	tag, err := cmdTag.Output()
+	if err != nil {
+		return "", err // Return error to be handled by the caller
+	}
+
+	return strings.TrimSpace(string(tag)), nil
+}
+
 // getCommitsSinceLastTag fetches all commit messages since the last Git tag matching the prefix.
 func getCommitsSinceLastTag(prefix string) ([]string, error) {
-	matchPattern := fmt.Sprintf("%s[0-9]*.[0-9]*.[0-9]*", prefix)
-	cmdTag := exec.Command("git", "describe", "--tags", "--abbrev=0", "--match", matchPattern)
-	lastTag, err := cmdTag.Output()
+	lastTag, err := getLatestTagOnBranch(prefix)
 
 	var cmd *exec.Cmd
-	if err != nil || len(lastTag) == 0 {
+	if err != nil || lastTag == "" {
 		cmd = exec.Command("git", "log", "--pretty=format:%s%n%b")
 		fmt.Fprintln(os.Stderr, "Analyzing all commits (no previous tag found).")
 	} else {
-		tag := strings.TrimSpace(string(lastTag))
-		cmd = exec.Command("git", "log", fmt.Sprintf("%s..HEAD", tag), "--pretty=format:%s%n%b")
-		fmt.Fprintf(os.Stderr, "Analyzing commits since %s...\n", tag)
+		cmd = exec.Command("git", "log", fmt.Sprintf("%s..HEAD", lastTag), "--pretty=format:%s%n%b")
+		fmt.Fprintf(os.Stderr, "Analyzing commits since %s...\n", lastTag)
 	}
 
 	output, err := cmd.Output()
