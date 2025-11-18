@@ -146,10 +146,54 @@ Determined BUMP: MINOR (Found 'feat:' commit)</code></pre>
 
         <section id="cicd" class="cicd">
             <h2>CI/CD Integration</h2>
-            <p>Automate your release process by using Versify in your pipeline. Here’s an example for GitHub Actions.</p>
-            <div class="code-block">
-                <h3>GitHub Actions Example</h3>
-                <pre><code>name: Create Release
+            <p>Automate your release process by using Versify in your pipeline. Choose your preferred method below.</p>
+
+            <div class="tabs cicd-tabs">
+                <button class="tab-link-cicd active" data-cicd="action">GitHub Action</button>
+                <button class="tab-link-cicd" data-cicd="manual">Manual Setup</button>
+            </div>
+
+            <div id="action-instructions" class="tab-content-cicd active">
+                <div class="code-block">
+                    <h3>Usage as a GitHub Action</h3>
+                    <p>The easiest way to integrate Versify is by using the official GitHub Action. This is the recommended approach for most users.</p>
+                    <pre><code>name: Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get Next Version
+        id: get_version
+        uses: OpScaleHub/versify@v1
+
+      - name: Create Git Tag and GitHub Release
+        if: steps.get_version.outputs.should_bump == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.get_version.outputs.new_version }}
+          name: Release ${{ steps.get_version.outputs.new_version }}
+          body: "See CHANGELOG for details."
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+                </div>
+            </div>
+
+            <div id="manual-instructions" class="tab-content-cicd">
+                <div class="code-block">
+                    <h3>Manual CI/CD Integration</h3>
+                    <p>If you prefer not to use the GitHub Action or are using a different CI/CD platform, you can download and run the binary directly.</p>
+                    <pre><code>name: Create Release
 
 on:
   push:
@@ -174,10 +218,7 @@ jobs:
       - name: Get Next Version
         id: get_version
         run: |
-          # Run versify and capture the new version from stdout
           VERSION=$(versify)
-          
-          # Check if a new version was determined
           if [[ -z "$VERSION" ]]; then
             echo "No version change detected."
             echo "version=" >> $GITHUB_OUTPUT
@@ -195,6 +236,7 @@ jobs:
           body: "See CHANGELOG for details."
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}</code></pre>
+                </div>
             </div>
         </section>
     </main>
